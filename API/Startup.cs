@@ -6,7 +6,7 @@ namespace API
 {
     public class Startup
     {
-    private readonly IConfiguration _config;
+        private readonly IConfiguration _config;
         public Startup(IConfiguration config)
         {
           _config = config;
