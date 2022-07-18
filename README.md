@@ -138,3 +138,7 @@ FLUSH PRIVILEGES;
 ## Useful Links
 
 [SQL Tools Documentation](https://vscode-sqltools.mteixeira.dev/driver/mysql#1-connections)
+
+# Section 2: Controllers
+
+# Section 3: Authentication and Logging In
