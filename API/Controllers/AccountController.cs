@@ -3,6 +3,7 @@ using System.Text;
 using API.Data;
 using API.DTOs;
 using API.Entities;
+using API.Interfaces;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 
@@ -10,58 +11,68 @@ namespace API.Controllers
 {
     public class AccountController : BaseApiController
     {
-        private readonly DataContext _context;
-        public AccountController(DataContext context) 
-        {        
-          _context = context;
-        }
+      private readonly DataContext _context;
+      private readonly ITokenService _tokenService;
+      public AccountController(DataContext context, ITokenService tokenService)
+      {        
+        _tokenService = tokenService;
+        _context = context;
+      }
 
-        [HttpPost("register")]
-        public async Task<ActionResult<AppUser>> Register(RegisterDto registerDto) 
+      [HttpPost("register")]
+      public async Task<ActionResult<UserDto>> Register(RegisterDto registerDto) 
+      {
+        if (await UserExists(registerDto.Username)) return BadRequest("Username is taken");
+
+        using var hmac = new HMACSHA512();
+
+        var user = new AppUser
         {
-          if (await UserExists(registerDto.Username)) return BadRequest("Username is taken");
+          UserName = registerDto.Username.ToLower(),
+          PasswordHash = hmac.ComputeHash(Encoding.UTF8.GetBytes(registerDto.Password)),
+          PasswordSalt = hmac.Key
+        };
 
-          using var hmac = new HMACSHA512();
+        _context.Users.Add(user);
+        await _context.SaveChangesAsync();
 
-          var user = new AppUser
-          {
-            UserName = registerDto.Username.ToLower(),
-            PasswordHash = hmac.ComputeHash(Encoding.UTF8.GetBytes(registerDto.Password)),
-            PasswordSalt = hmac.Key
-          };
-
-          _context.Users.Add(user);
-          await _context.SaveChangesAsync();
-
-          return user;
-        }
-
-        [HttpPost("login")]
-        public async Task<ActionResult<AppUser>> Login(LoginDto loginDto)
+        return new UserDto
         {
-          // have to use await because we're making a request from the database
-          // username is not a primary key so can't use Users.Find method (which only works with primary key)
-          // also using SingleOrDefaultAsync will actually throw an exception if there is more than one result.
-          var user = await _context.Users.SingleOrDefaultAsync(x => x.UserName == loginDto.Username);
+          Username = user.UserName,
+          Token = _tokenService.CreateToken(user)
+        };
+      }
 
-          if (user == null) return Unauthorized("Invalid username");
+      [HttpPost("login")]
+      public async Task<ActionResult<UserDto>> Login(LoginDto loginDto)
+      {
+        // have to use await because we're making a request from the database
+        // username is not a primary key so can't use Users.Find method (which only works with primary key)
+        // also using SingleOrDefaultAsync will actually throw an exception if there is more than one result.
+        var user = await _context.Users.SingleOrDefaultAsync(x => x.UserName == loginDto.Username);
 
-          // calculate the computed hash of their password using the password salt.
-          using var hmac = new HMACSHA512(user.PasswordSalt);
+        if (user == null) return Unauthorized("Invalid username");
 
-          var computedHash = hmac.ComputeHash(Encoding.UTF8.GetBytes(loginDto.Password));
+        // calculate the computed hash of their password using the password salt.
+        using var hmac = new HMACSHA512(user.PasswordSalt);
 
-          for (int i = 0; i < computedHash.Length; i++)
-          {
-            if (computedHash[i] != user.PasswordHash[i]) return Unauthorized("Invalid password");
-          }
+        var computedHash = hmac.ComputeHash(Encoding.UTF8.GetBytes(loginDto.Password));
 
-          return user;
-        }
-
-        private async Task<bool> UserExists(string username)
+        for (int i = 0; i < computedHash.Length; i++)
         {
-          return await _context.Users.AnyAsync(x => x.UserName == username.ToLower());
+          if (computedHash[i] != user.PasswordHash[i]) return Unauthorized("Invalid password");
         }
+
+        return new UserDto
+        {
+          Username = user.UserName,
+          Token = _tokenService.CreateToken(user)
+        };
+      }
+
+      private async Task<bool> UserExists(string username)
+      {
+        return await _context.Users.AnyAsync(x => x.UserName == username.ToLower());
+      }
     }
 }

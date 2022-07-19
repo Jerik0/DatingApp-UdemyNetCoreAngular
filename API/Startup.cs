@@ -1,7 +1,11 @@
+using System.Text;
 using API.Data;
+using API.Extensions;
 using API.Interfaces;
 using API.Services;
+using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi.Models;
 
 namespace API
@@ -17,24 +21,14 @@ namespace API
         // This method gets called by the runtime. Use this method to add services to the container.
         public void ConfigureServices(IServiceCollection services)
         {
-          // using AddScoped instead of Singleton, which would continually use resources.
-          // in this case it just needs to create a token and won't need to be active after.
-          // AddTransient means service is created and destroyed as soon as the method is finished. 
-          // AddScoped is considered correct for http requests.
-          services.AddScoped<ITokenService, TokenService>();
-
-          services.AddDbContext<DataContext>(options => {
-            options.UseMySql(
-              _config.GetConnectionString("DefaultConnection"), 
-              new MySqlServerVersion(new Version(8, 0, 11))
-            );
-          });
+          services.AddApplicationServices(_config);
           services.AddControllers();
           services.AddSwaggerGen(c =>
           {
               c.SwaggerDoc("v1", new OpenApiInfo { Title = "WebAPIv5", Version = "v1" });
           });
           services.AddCors();
+          services.AddIdentityServices(_config);
         }
 
         // This method gets called by the runtime. Use this method to configure the HTTP request pipeline.
@@ -53,6 +47,7 @@ namespace API
 
           app.UseCors(x => x.AllowAnyHeader().AllowAnyMethod().WithOrigins("https://localhost:4200"));
 
+          app.UseAuthentication();
           app.UseAuthorization();
 
           app.UseEndpoints(endpoints =>
