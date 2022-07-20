@@ -8,7 +8,7 @@ import { User } from '../models/user';
   providedIn: 'root'
 })
 export class AccountService {
-  baseUrl = 'https://localhost:5001/api/';
+  baseUrl = 'https://localhost:5001/api';
 
   // ReplaySubject is a type of observable (a kind of 'buffer') that will emit
   // the last x amount of values inside it when subscribed to. We've specified 1 value.
@@ -20,7 +20,7 @@ export class AccountService {
   constructor(private http: HttpClient) { }
 
   login(model: any) {
-    return this.http.post(this.baseUrl + 'account/login', model).pipe(
+    return this.http.post(this.baseUrl + '/account/login', model).pipe(
       map((response: User) => {
         const user = response;
         if (user) {
@@ -36,6 +36,17 @@ export class AccountService {
   logout() {
     localStorage.removeItem('user');
     this.currentUserSource.next(null);
+  }
+
+  register(model: any) {
+    return this.http.post(this.baseUrl + '/account/register', model).pipe(
+      map((user: User) => {
+        if (user) {
+          localStorage.setItem('user', JSON.stringify(user));
+          this.currentUserSource.next(user);
+        }
+      })
+    )
   }
 
   setCurrentUser(user: User) {
