@@ -59,7 +59,7 @@ public class DataContext : DbContext
 **Create connection string and put in appsettings.Development.json:**
 ```json
 "ConnectionStrings": {
-  "DefaultConnection": "server=127.0.0.1;uid=root;pwd=Jjc01dec!;database=test"
+  "DefaultConnection": "server=127.0.0.1;uid=root;pwd=password;database=yourdatabase"
 },
 ```
 
