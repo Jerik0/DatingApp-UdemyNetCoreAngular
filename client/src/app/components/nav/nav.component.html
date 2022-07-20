@@ -14,7 +14,7 @@
     </ul>
 
     <div class="dropdown" *ngIf="accountService.currentUser$ | async" dropdown>
-      <a class="dropdown-toggle text-light" dropdownToggle>Welcome user</a>
+      <a class="dropdown-toggle text-light" dropdownToggle>Welcome {{ (accountService.currentUser$ | async).username }}</a>
       <div class="dropdown-menu mt-3" *dropdownMenu>
         <a class="dropdown-item">Edit Profile</a>
         <div class="dropdown-divider"></div>
